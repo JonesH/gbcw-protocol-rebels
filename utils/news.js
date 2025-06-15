@@ -1,5 +1,6 @@
-const axios = require('axios');
-require('dotenv').config();
+import axios from 'axios';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const NEWS_API_KEY = process.env.NEWS_API_KEY;
 const BASE_URL = 'https://newsapi.org/v2';
@@ -7,7 +8,7 @@ const BASE_URL = 'https://newsapi.org/v2';
 /**
  * NewsAPI client class for fetching news articles
  */
-class NewsAPI {
+export class NewsAPI {
     constructor(apiKey = NEWS_API_KEY) {
         if (!apiKey) {
             throw new Error('NewsAPI key is required');
@@ -144,9 +145,4 @@ class NewsAPI {
     }
 }
 
-// Export both the class and a default instance
-const newsAPI = new NewsAPI();
-module.exports = {
-    NewsAPI,
-    newsAPI
-};
+export const newsAPI = new NewsAPI();

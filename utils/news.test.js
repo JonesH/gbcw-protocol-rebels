@@ -1,5 +1,6 @@
-const axios = require('axios');
-const { NewsAPI } = require('./news');
+import { jest } from '@jest/globals';
+import axios from 'axios';
+import { NewsAPI } from './news.js';
 
 // Mock axios
 jest.mock('axios');
