@@ -23,7 +23,8 @@
         "dotenv": "^16.5.0",
         "hono": "^4.7.10",
         "near-api-js": "^5.0.1",
-        "near-seed-phrase": "^0.2.1"
+        "near-seed-phrase": "^0.2.1",
+        "node-fetch": "^3.3.2"
     },
     "devDependencies": {
         "axios": "^1.10.0",

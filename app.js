@@ -43,14 +43,14 @@ app.post('/api/evaluate', async (c) => {
         const data = JSON.stringify({ question, answer });
         const hash = await createHash('sha256').update(Buffer.from(data)).digest();
         
-        // Sign with NEAR agent
-        const result = await signWithAgent('question-evaluation', [...hash]);
+        // Remove signing with NEAR agent
+        // const result = await signWithAgent('question-evaluation', [...hash]);
         
-        // Return the transaction details
+        // Return the answer and hash only
         return c.json({
-            transaction_hash: result.transactionHash,
-            explorer_url: `https://explorer.testnet.near.org/transactions/${result.transactionHash}`,
-            status: 'submitted'
+            answer,
+            hash: hash.toString('hex'),
+            status: 'evaluated'
         });
     } catch (error) {
         console.error('Error in /api/evaluate:', error);
