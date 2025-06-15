@@ -65,7 +65,18 @@ app.post('/api/evaluate-local', async (c) => {
             return c.json({ error: 'Question is required' }, 400);
         }
         const answerBool = await evaluateCredibility(question);
-        return c.json({ answer: answerBool ? 'yes' : 'no' });
+        
+        // Create a hash of the question and answer for blockchain
+        const data = JSON.stringify({ question, answer: answerBool });
+        const hash = await createHash('sha256').update(Buffer.from(data)).digest();
+        
+        return c.json({
+            question,
+            sources: [], // Empty sources array for local evaluation
+            answer: answerBool,
+            hash: hash.toString('hex'),
+            status: 'evaluated'
+        });
     } catch (error) {
         console.error('Error in /api/evaluate-local:', error);
         return c.json({ error: error.message }, 500);
