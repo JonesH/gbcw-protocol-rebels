@@ -21,7 +21,7 @@ services:
     shade-agent-api-test:
         platform: linux/amd64 # Explicitly set for TDX
         # shade-agent-app-image
-        image: gophnic/submitter-agent@sha256:612d9f31b79ec385f6cc744a699dc8b1573c8437bc144381d145178d35ad3aae
+        image: gophnic/submitter-agent@sha256:032d6ec4229268bce956ab23c4ef884f4bfe6d16a2939bf14a63136e5dcab979
         container_name: shade-agent-api-test
         ports:
             - "3000:3000"

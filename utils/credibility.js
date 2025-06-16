@@ -84,15 +84,18 @@ export async function evaluateCredibility(question) {
                 Focus on finding the most recent and reliable sources. 
                 For price-related questions, prioritize the most recent price information.
                 Include specific price information in your response.
-                IMPORTANT: Include the source URLs in your response using markdown links.
-                Format your response as:
+                
+                REQUIRED: You MUST include at least 2-3 reliable sources with their URLs.
+                Format your response exactly as follows:
                 Answer: [yes/no]
                 Current price: [price]
                 Sources:
                 - [source name](url)
                 - [source name](url)
+                - [source name](url)
                 
-                Make sure to include at least 2-3 reliable sources with their URLs.`
+                Make sure to use proper markdown link format [source name](url) for each source.
+                Do not skip the Sources section.`
             }],
         });
 
@@ -105,16 +108,33 @@ export async function evaluateCredibility(question) {
         console.log('Web search analysis complete. Full response:');
         console.log(completion.choices[0].message.content);
 
-        // Extract sources from annotations
+        // Extract sources from markdown links in the response
         const sources = [];
-        if (completion.choices[0].message.annotations) {
-            completion.choices[0].message.annotations.forEach(annotation => {
-                if (annotation.type === 'url_citation') {
-                    sources.push({
-                        title: annotation.url_citation.title,
-                        url: annotation.url_citation.url
-                    });
-                }
+        const sourceRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+        let match;
+        while ((match = sourceRegex.exec(completion.choices[0].message.content)) !== null) {
+            sources.push({
+                title: match[1],
+                url: match[2]
+            });
+        }
+
+        // If no sources were found in markdown format, try to extract URLs directly
+        if (sources.length === 0) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            while ((match = urlRegex.exec(completion.choices[0].message.content)) !== null) {
+                sources.push({
+                    title: 'Source',
+                    url: match[1]
+                });
+            }
+        }
+
+        // If still no sources found, add a default source
+        if (sources.length === 0) {
+            sources.push({
+                title: 'Web Search Results',
+                url: 'https://www.google.com/search?q=' + encodeURIComponent(question)
             });
         }
 
