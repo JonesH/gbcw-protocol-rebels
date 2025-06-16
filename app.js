@@ -71,7 +71,7 @@ app.post('/api/evaluate', async (c) => {
             hash: hash.toString('hex'),
             status: 'evaluated',
             tx_hash: ethResult.success ? ethResult.transactionHash : null,
-            explorer_url: ethResult.success ? `${process.env.ETH_EXPLORER_URL}/tx/${ethResult.transactionHash}` : null
+            explorer_url: ethResult.success ? `https://sepolia.etherscan.io/tx/${ethResult.transactionHash}` : null
         };
         console.log('Sending response:', response);
         return c.json(response);
