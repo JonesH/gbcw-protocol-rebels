@@ -4,7 +4,6 @@ import { Hono } from "hono";
 import { createHash } from "node:crypto";
 import { evaluateCredibility, refute } from "./utils/credibility.js";
 import { signWithAgent } from "@neardefi/shade-agent-js";
-import submitToEth from "./utils/eth_submit.js";
 
 const PORT = 3000;
 
@@ -52,27 +51,13 @@ app.post("/api/evaluate", async (c) => {
     const hash = await createHash("sha256").update(Buffer.from(data)).digest();
     console.log("Generated hash:", hash.toString("hex"));
 
-    // Submit to Ethereum blockchain
-    console.log("Submitting to Ethereum blockchain...");
-    const ethResult = await submitToEth({
-      question,
-      sources: answer.sources || [],
-      answer: answer.answer,
-      hash: hash.toString("hex"),
-    });
-    console.log("Ethereum submission result:", ethResult);
-
-    // Return the answer, hash, and Ethereum transaction details
+    // Return the answer and hash (no blockchain submission)
     const response = {
       question,
       sources: answer.sources || [],
       answer: answer.answer,
       hash: hash.toString("hex"),
       status: "evaluated",
-      tx_hash: ethResult.success ? ethResult.transactionHash : null,
-      explorer_url: ethResult.success
-        ? `https://sepolia.etherscan.io/tx/${ethResult.transactionHash}`
-        : null,
     };
     console.log("Sending response:", response);
     return c.json(response);
@@ -122,26 +107,29 @@ app.post("/api/evaluate-local", async (c) => {
 
 app.post("/api/refute", async (c) => {
   try {
-    console.log("Received refutation request");
-    const { transactionHash } = await c.req.json();
-    console.log("Transaction hash received:", transactionHash);
+    const requestBody = await c.req.json();
+    console.log("Received refutation request: ", requestBody);
+    const { originalEvaluation } = requestBody;
+    console.log("Original evaluation data received:", originalEvaluation);
 
-    if (!transactionHash) {
-      console.log("Error: Transaction hash is missing");
-      return c.json({ error: "Transaction hash is required" }, 400);
+    if (!originalEvaluation || !originalEvaluation.question) {
+      console.log("Error: Original evaluation data is missing");
+      return c.json(
+        {
+          error:
+            "Original evaluation data (question, answer, sources) is required" +
+            originalEvaluation,
+        },
+        400,
+      );
     }
 
     // Refute the original evaluation
     console.log("Refuting original evaluation...");
-    const refutationResult = await refute(transactionHash);
+    const refutationResult = await refute(originalEvaluation);
     console.log("Refutation result:", refutationResult);
 
-    // Submit refutation to Ethereum blockchain
-    console.log("Submitting refutation to Ethereum blockchain...");
-    const ethResult = await submitToEth(refutationResult.refutationData);
-    console.log("Ethereum refutation submission result:", ethResult);
-
-    // Return the refutation result with blockchain details
+    // Return the refutation result (no blockchain submission)
     const response = {
       originalQuestion: refutationResult.originalQuestion,
       originalAnswer: refutationResult.originalAnswer,
@@ -149,12 +137,7 @@ app.post("/api/refute", async (c) => {
       sources: refutationResult.sources,
       originalSourceCount: refutationResult.originalSourceCount,
       refuteSourceCount: refutationResult.refuteSourceCount,
-      originalTransactionHash: transactionHash,
       status: "refuted",
-      refutation_tx_hash: ethResult.success ? ethResult.transactionHash : null,
-      refutation_explorer_url: ethResult.success
-        ? `https://sepolia.etherscan.io/tx/${ethResult.transactionHash}`
-        : null,
     };
     console.log("Sending refutation response:", response);
     return c.json(response);
@@ -168,16 +151,22 @@ app.post("/api/refute", async (c) => {
 app.post("/api/refute-local", async (c) => {
   try {
     console.log("Received local refutation request");
-    const { transactionHash } = await c.req.json();
-    console.log("Transaction hash received:", transactionHash);
+    const { originalEvaluation } = await c.req.json();
+    console.log("Original evaluation data received:", originalEvaluation);
 
-    if (!transactionHash) {
-      console.log("Error: Transaction hash is missing");
-      return c.json({ error: "Transaction hash is required" }, 400);
+    if (!originalEvaluation || !originalEvaluation.question) {
+      console.log("Error: Original evaluation data is missing");
+      return c.json(
+        {
+          error:
+            "Original evaluation data (question, answer, sources) is required",
+        },
+        400,
+      );
     }
 
     console.log("Refuting evaluation locally...");
-    const refutationResult = await refute(transactionHash);
+    const refutationResult = await refute(originalEvaluation);
     console.log("Local refutation result:", refutationResult);
 
     const response = {
@@ -187,7 +176,6 @@ app.post("/api/refute-local", async (c) => {
       sources: refutationResult.sources,
       originalSourceCount: refutationResult.originalSourceCount,
       refuteSourceCount: refutationResult.refuteSourceCount,
-      originalTransactionHash: transactionHash,
       status: "refuted-local",
     };
     console.log("Sending local refutation response:", response);

@@ -9,3 +9,6 @@ dist
 
 cli.js
 .aider*
+.yarn/
+yarn.lock
+.yarn/install-state.gz .yarn/releases

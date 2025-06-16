@@ -1,10 +1,8 @@
 import { OpenAI } from "openai";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
-import { ethers } from "ethers";
 dotenv.config();
 
-const ethRpcUrl = "https://sepolia.drpc.org";
 
 // Initialize OpenAI client with proper error handling
 let openai;
@@ -157,32 +155,6 @@ export async function evaluateCredibility(question) {
   }
 }
 
-/**
- * Fetches and decodes transaction data from Ethereum
- * @param {string} txHash - Transaction hash
- * @param {ethers.JsonRpcProvider} provider - Ethereum provider
- * @returns {Promise<Object>} Decoded transaction data
- */
-async function fetchAndDecodeTx(txHash, provider) {
-  try {
-    console.log("Fetching transaction data for refutation...");
-    const tx = await provider.getTransaction(txHash);
-    if (!tx) {
-      throw new Error("Transaction not found");
-    }
-
-    const decodedData = ethers.toUtf8String(tx.data);
-    const parsedData = JSON.parse(decodedData);
-
-    console.log("Decoded original transaction data:");
-    console.log(JSON.stringify(parsedData, null, 2));
-
-    return parsedData;
-  } catch (error) {
-    console.error("Error fetching/decoding transaction:", error.message);
-    throw error;
-  }
-}
 
 /**
  * Extracts sources from OpenAI response with markdown links
@@ -217,42 +189,31 @@ function extractSourcesFromResponse(content) {
 
 /**
  * Refutes a previous evaluation by finding counter-evidence
- * @param {string} transactionHash - Hash of the original evaluation transaction
- * @returns {Promise<{originalQuestion: string, originalAnswer: boolean, refuteAnswer: boolean, sources: Array, originalSourceCount: number, refuteSourceCount: number, refutationData: Object}>}
+ * @param {Object} originalData - Original evaluation data {question, answer, sources}
+ * @returns {Promise<{originalQuestion: string, originalAnswer: boolean, refuteAnswer: boolean, sources: Array, originalSourceCount: number, refuteSourceCount: number}>}
  */
-export async function refute(transactionHash) {
-  console.log("Starting refutation for transaction:", transactionHash);
+export async function refute(originalData) {
+  console.log("Starting refutation for original data:", originalData);
 
   if (!openai) {
     console.error("OpenAI client not initialized when refute was called");
     throw new Error("OpenAI client not initialized");
   }
 
-  if (!transactionHash || transactionHash.trim() === "") {
-    console.error("Empty transaction hash provided to refute");
-    throw new Error("Transaction hash cannot be empty");
+  if (!originalData || !originalData.question) {
+    console.error("Invalid original data provided to refute");
+    throw new Error("Original evaluation data is required");
   }
 
   try {
-    // 1. Fetch original transaction data from Ethereum
-    console.log("Fetching original transaction data...");
-    const provider = new ethers.JsonRpcProvider(
-      process.env.ETH_RPC_URL || ethRpcUrl,
-    );
-    const originalData = await fetchAndDecodeTx(transactionHash, provider);
-
-    // 2. Extract original question, answer, and sources
+    // Extract original question, answer, and sources from provided data
     const {
       question: originalQuestion,
       answer: originalAnswer,
-      sources: originalSources,
+      sources: originalSources = [],
     } = originalData;
 
-    if (!originalQuestion) {
-      throw new Error("Original question not found in transaction data");
-    }
-
-    const originalSourceCount = originalSources ? originalSources.length : 0;
+    const originalSourceCount = originalSources.length;
     const minimumRequiredSources = originalSourceCount + 1;
 
     console.log(`Original evaluation: ${originalAnswer ? "YES" : "NO"}`);
@@ -261,7 +222,7 @@ export async function refute(transactionHash) {
       `Minimum required sources for refutation: ${minimumRequiredSources}`,
     );
 
-    // 3. Generate opposite stance prompt
+    // Generate opposite stance prompt
     const refutePrompt = `Find evidence to REFUTE the following claim: "${originalQuestion}".
     The original evaluation concluded: ${originalAnswer ? "YES" : "NO"}.
 
@@ -308,7 +269,7 @@ export async function refute(transactionHash) {
     console.log("Refutation analysis complete. Full response:");
     console.log(refutationContent);
 
-    // 5. Extract sources and validate count exceeds original
+    // Extract sources and validate count exceeds original
     const refuteSources = extractSourcesFromResponse(refutationContent);
 
     if (refuteSources.length <= originalSourceCount) {
@@ -323,18 +284,6 @@ export async function refute(transactionHash) {
 
     const refuteAnswer = !originalAnswer; // Always opposite of original
 
-    // 7. Prepare refutation data for blockchain submission
-    const refutationData = {
-      originalTransactionHash: transactionHash,
-      originalQuestion,
-      originalAnswer,
-      refuteAnswer,
-      sources: refuteSources,
-      refutationSummary: refutationContent,
-      timestamp: new Date().toISOString(),
-      type: "refutation",
-    };
-
     return {
       originalQuestion,
       originalAnswer,
@@ -342,7 +291,6 @@ export async function refute(transactionHash) {
       sources: refuteSources,
       originalSourceCount,
       refuteSourceCount: refuteSources.length,
-      refutationData,
     };
   } catch (error) {
     console.error("Error in refutation:", error);
