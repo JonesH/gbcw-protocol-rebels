@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import fetch from "node-fetch";
 dotenv.config();
 
-
 // Initialize OpenAI client with proper error handling
 let openai;
 try {
@@ -155,7 +154,6 @@ export async function evaluateCredibility(question) {
   }
 }
 
-
 /**
  * Extracts sources from OpenAI response with markdown links
  * @param {string} content - Response content
@@ -248,7 +246,7 @@ export async function refute(originalData) {
 
     console.log("Searching for refutation evidence...");
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-search-preview",
+      model: "gpt-4o-mini-search-preview",
       web_search_options: {
         search_context_size: "high",
       },
@@ -271,18 +269,12 @@ export async function refute(originalData) {
 
     // Extract sources and validate count exceeds original
     const refuteSources = extractSourcesFromResponse(refutationContent);
-
-    if (refuteSources.length <= originalSourceCount) {
-      throw new Error(
-        `Refutation requires more sources than original (${originalSourceCount}). Found only ${refuteSources.length} sources.`,
+    const refuteAnswer = refuteSources.length > originalSourceCount;
+    if (refuteAnswer) {
+      console.log(
+        `Successfully found ${refuteSources.length} sources for refutation (required: ${minimumRequiredSources})`,
       );
     }
-
-    console.log(
-      `Successfully found ${refuteSources.length} sources for refutation (required: ${minimumRequiredSources})`,
-    );
-
-    const refuteAnswer = !originalAnswer; // Always opposite of original
 
     return {
       originalQuestion,
